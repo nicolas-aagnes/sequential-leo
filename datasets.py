@@ -5,13 +5,23 @@ import numpy as np
 class Dataset2D(torch.utils.data.Dataset):
     """Toy dataset for data following sinusoidal curvers silimar to Finn et al. 2018."""
 
-    def __init__(self, num_support, num_query, num_frames=50, horizon=10, noise=0.3):
+    def __init__(
+        self,
+        num_support,
+        num_query,
+        num_timesteps=10,
+        num_timesteps_pred=4,
+        noise=0.3,
+        delta=0.1,
+        return_amplitude_and_phase=False,
+    ):
         self.num_support = num_support
         self.num_query = num_query
-        self.num_frames = num_frames
-        self.horizon = horizon
+        self.num_timesteps = num_timesteps
+        self.num_timesteps_pred = num_timesteps_pred
         self.noise = noise
-        self.delta = 0.1
+        self.delta = delta
+        self.return_amplitude_and_phase = return_amplitude_and_phase
 
     def __getitem__(self, index):
         """Sample a task for the sinusoidal regression problem.
@@ -19,8 +29,8 @@ class Dataset2D(torch.utils.data.Dataset):
         Sample a phase and amplitude at random -> This is the definining feature of the task.
 
         A one-shot learning case would be:
-        - sample (num_frames + horizon) x values, ordered by increasing value, and get their correspoinding y values with noise.
-        - Xu are the first num_frames points, and Yu are the remaining horizon points.
+        - sample (num_timesteps + num_timesteps_pred) x values, ordered by increasing value, and get their correspoinding y values with noise.
+        - Xu are the first num_timesteps points, and Yu are the remaining num_timesteps_pred points.
 
         Do the above process num_support times for creating x_support and y_support tensors.
         Do the above process num_query   times for creating x_query   and y_query   tensors.
@@ -30,19 +40,21 @@ class Dataset2D(torch.utils.data.Dataset):
         The dataset index argument is ignored as the number of tasks trained on is determined outside this class.
 
         Returns:
-            - x_support: Tensor of shape (num_support, num_frames, 2)
-            - y_support: Tensor of shape (num_support, horizon,    2)
-            - x_query:   Tensor of shape (num_query,   num_frames, 2)
-            - y_query:   Tensor of shape (num_query,   horizon,    2)
+            - x_support: Tensor of shape (num_support, num_timesteps, 2)
+            - y_support: Tensor of shape (num_support, num_timesteps_pred,    2)
+            - x_query:   Tensor of shape (num_query,   num_timesteps, 2)
+            - y_query:   Tensor of shape (num_query,   num_timesteps_pred,    2)
             - amplitude, phase: Tuple for plotting the ground truth sine curve
         """
         amplitude = np.random.uniform(0.1, 5)
         phase = np.random.uniform(0.1, np.pi)
 
         num_sequences = self.num_support + self.num_query
-        num_timesteps = self.num_frames + self.horizon
+        num_timesteps = self.num_timesteps + self.num_timesteps_pred
 
-        x_starts = np.random.uniform(-5, 5 - self.delta * self.horizon, num_sequences)
+        x_starts = np.random.uniform(
+            -5, 5 - self.delta * self.num_timesteps_pred, num_sequences
+        )
         x = np.empty((num_sequences, num_timesteps))
 
         for i, x_start in enumerate(x_starts):  # TODO: This can easily be vecotrized.
@@ -56,21 +68,37 @@ class Dataset2D(torch.utils.data.Dataset):
         assert data.shape == (num_sequences, num_timesteps, 2), data.shape
         assert (data[:, 1:, 0] > data[:, :-1, 0]).all(), data[0, :, 0]
 
-        x_support = data[: self.num_support, : self.num_frames]
-        y_support = data[: self.num_support, self.num_frames :]
-        x_query = data[self.num_support :, : self.num_frames]
-        y_query = data[self.num_support :, self.num_frames :]
+        x_support = data[: self.num_support, : self.num_timesteps]
+        y_support = data[: self.num_support, self.num_timesteps :]
+        x_query = data[self.num_support :, : self.num_timesteps]
+        y_query = data[self.num_support :, self.num_timesteps :]
 
         assert x_support.shape == (
             self.num_support,
-            self.num_frames,
+            self.num_timesteps,
             2,
         ), x_support.shape
-        assert y_support.shape == (self.num_support, self.horizon, 2), y_support.shape
-        assert x_query.shape == (self.num_query, self.num_frames, 2), x_query.shape
-        assert y_query.shape == (self.num_query, self.horizon, 2), y_query.shape
+        assert y_support.shape == (
+            self.num_support,
+            self.num_timesteps_pred,
+            2,
+        ), y_support.shape
+        assert x_query.shape == (self.num_query, self.num_timesteps, 2), x_query.shape
+        assert y_query.shape == (
+            self.num_query,
+            self.num_timesteps_pred,
+            2,
+        ), y_query.shape
 
-        return x_support, y_support, x_query, y_query, (amplitude, phase)
+        if self.return_amplitude_and_phase:
+            return x_support, y_support, x_query, y_query, (amplitude, phase)
+
+        return (
+            x_support.astype(np.float32),
+            y_support.astype(np.float32),
+            x_query.astype(np.float32),
+            y_query.astype(np.float32),
+        )
 
     def __len__(self):
-        return 100000000
+        return 1000000
