@@ -27,7 +27,7 @@ class Dataset2D(torch.utils.data.Dataset):
 
         A task consists of the tuple (x_support, y_support, x_query, y_query)
 
-        The dataset index argument is ignored as we run on args.num_loops * batch_size total tasks.
+        The dataset index argument is ignored as the number of tasks trained on is determined outside this class.
 
         Returns:
             - x_support: Tensor of shape (num_support, num_frames, 2)

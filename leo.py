@@ -54,7 +54,7 @@ class LEO:
         self.enconder = encoder
         self.relation_net = relation_net
         self.decoder = decoder
-        self.t_theta = f_theta  # Note: I could even decouple theta from f_theta. Such that theta is just a linear layer with correct reshaping. But also not, quite complicated.
+        self.t_theta = f_theta
 
         params = (
             list(self.encoder.parameters())
@@ -75,9 +75,7 @@ class LEO:
     def _train_loop(self, task, train):
         x_support, y_support, x_query, y_query = task
 
-        mean_z, variance_z = self.relation_net(
-            self.enconder(x_support)
-        )  # Probably need to concatenate x_support with y_support. I need more ys than xs (in time).
+        mean_z, variance_z = self.relation_net(self.enconder(x_support))
         z = mean_z + torch.randn() * torch.sqrt(variance_z)
         z_dashed = z.clone()
         mean_theta, variance_theta = self.decoder(z_dashed)
