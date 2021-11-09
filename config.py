@@ -36,6 +36,7 @@ def get_model_and_dataloaders(args):
         num_timesteps=args.num_timesteps,
         num_timesteps_pred=args.num_timesteps_pred,
         noise=args.noise,
+        delta=args.delta,
     )
     dataset_val = Dataset2D(
         num_support=args.num_support,
@@ -43,6 +44,7 @@ def get_model_and_dataloaders(args):
         num_timesteps=args.num_timesteps,
         num_timesteps_pred=args.num_timesteps_pred,
         noise=args.noise,
+        delta=args.delta,
     )
     dataset_test = Dataset2D(
         num_support=args.num_support,
@@ -50,6 +52,7 @@ def get_model_and_dataloaders(args):
         num_timesteps=args.num_timesteps,
         num_timesteps_pred=args.num_timesteps_pred,
         noise=args.noise,
+        delta=args.delta,
     )
 
     dataloader_train = torch.utils.data.DataLoader(
