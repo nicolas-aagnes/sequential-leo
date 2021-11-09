@@ -52,9 +52,7 @@ class Dataset2D(torch.utils.data.Dataset):
         num_sequences = self.num_support + self.num_query
         num_timesteps = self.num_timesteps + self.num_timesteps_pred
 
-        x_starts = np.random.uniform(
-            -5, 5 - self.delta * self.num_timesteps_pred, num_sequences
-        )
+        x_starts = np.random.uniform(-5, 5 - self.delta * num_timesteps, num_sequences)
         x = np.empty((num_sequences, num_timesteps))
 
         for i, x_start in enumerate(x_starts):  # TODO: This can easily be vecotrized.
