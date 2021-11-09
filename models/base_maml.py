@@ -40,6 +40,7 @@ class BaseMAML:
         Returns:
             outer_loss (Tensor): mean loss over the batch, scalar
         """
+        predictions_batch = []
         outer_loss_batch = []
 
         for x_support, y_support, x_query, y_query in zip(*task_batch):
@@ -53,13 +54,15 @@ class BaseMAML:
             predictions = self._forward(x_query, parameters)
             outer_loss = self._outer_loss(predictions, y_query, parameters)
 
+            predictions_batch.append(predictions)
             outer_loss_batch.append(outer_loss)
 
+        predictions = torch.stack(predictions_batch)
         outer_loss = torch.mean(torch.stack(outer_loss_batch))
 
-        return outer_loss
+        return outer_loss, predictions
 
-    def train(self, dataloader_train, dataloader_val, writer):
+    def train(self, dataloader_train, dataloader_val, writer, yield_batch_output=False):
         """Train.
 
         Consumes dataloader_train to optimize meta-parameters
@@ -79,35 +82,34 @@ class BaseMAML:
             tot_tasks += task_batch[0].shape[0]  # Add number of current batches.
 
             self.optimizer.zero_grad()
-            outer_loss = self._outer_step(task_batch, train=True)
+            outer_loss, predictions = self._outer_step(task_batch, train=True)
             outer_loss.backward()
             self.optimizer.step()
 
+            val_tasks = 0
+            val_losses = []
+
+            for val_task_batch in dataloader_val:
+                with torch.no_grad():
+                    val_outer_loss, val_predictions = self._outer_step(
+                        val_task_batch, train=False
+                    )
+                    val_losses.append(val_outer_loss.item())
+
+                val_tasks += val_task_batch[0].shape[0]
+                if val_tasks >= num_val_tasks:
+                    break
+
+            val_loss = np.mean(val_losses)
+
             print(
-                f"Iteration {i_step}, {tot_tasks} tasks: {outer_loss.item():.3f} train loss"
+                f"[{tot_tasks:>4}/{num_train_tasks}]  Train: {outer_loss.item():.2f}  Val: {val_loss.item():.2f}"
             )
             writer.add_scalar("loss/train", outer_loss.item(), tot_tasks)
+            writer.add_scalar("loss/val", val_loss, tot_tasks)
 
-            if i_step % 1 == 0:
-                val_tasks = 0
-                losses = []
-
-                for val_task_batch in dataloader_val:
-                    with torch.no_grad():
-                        outer_loss = self._outer_step(val_task_batch, train=False)
-                        losses.append(outer_loss.item())
-
-                    val_tasks += val_task_batch[0].shape[0]
-                    if val_tasks >= num_val_tasks:
-                        break
-
-                loss = np.mean(losses)
-                print(
-                    f"Iteration {i_step}, {tot_tasks} tasks: {loss.item():.3f} val loss"
-                )
-                writer.add_scalar("loss/val", loss, tot_tasks)
-
-            print()
+            if yield_batch_output:
+                yield task_batch, predictions
 
             if tot_tasks >= num_train_tasks:
                 break

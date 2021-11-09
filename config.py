@@ -35,18 +35,21 @@ def get_model_and_dataloaders(args):
         num_query=args.num_query,
         num_timesteps=args.num_timesteps,
         num_timesteps_pred=args.num_timesteps_pred,
+        noise=args.noise,
     )
     dataset_val = Dataset2D(
         num_support=args.num_support,
         num_query=args.num_query,
         num_timesteps=args.num_timesteps,
         num_timesteps_pred=args.num_timesteps_pred,
+        noise=args.noise,
     )
     dataset_test = Dataset2D(
         num_support=args.num_support,
         num_query=args.num_query,
         num_timesteps=args.num_timesteps,
         num_timesteps_pred=args.num_timesteps_pred,
+        noise=args.noise,
     )
 
     dataloader_train = torch.utils.data.DataLoader(
