@@ -8,6 +8,8 @@ from dataclasses import dataclass
 
 torch.autograd.set_detect_anomaly(True)
 
+DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
+
 
 @dataclass
 class LEOConfig:
@@ -93,6 +95,11 @@ class LEO(BaseMAML):
         self.f_theta = LSTMTheta(
             config.input_size, config.f_theta_hidden_size, config.num_timesteps_pred
         )
+
+        self.encoder.to(DEVICE)
+        self.relation_net.to(DEVICE)
+        self.decoder.to(DEVICE)
+        self.f_theta.to(DEVICE)
 
         params = (
             list(self.encoder.parameters())
