@@ -121,7 +121,9 @@ class LEO(BaseMAML):
     #     )
 
     def _sample_from_normal(self, mean, log_variance):
-        return mean + torch.sqrt(torch.exp(log_variance)) * torch.randn(*mean.shape)
+        return mean + torch.sqrt(torch.exp(log_variance)) * torch.randn(
+            *mean.shape, device=DEVICE
+        )
 
     def _forward(self, x_query, parameters):
         return self.f_theta((x_query, parameters["theta"]))
