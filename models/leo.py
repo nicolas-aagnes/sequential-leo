@@ -40,8 +40,8 @@ class LSTMTheta(torch.nn.Module):
         num_samples, timesteps, input_size = x.shape
         assert input_size == self.input_size
 
-        h = torch.zeros(num_samples, self.hidden_size)
-        c = torch.zeros(num_samples, self.hidden_size)
+        h = torch.zeros(num_samples, self.hidden_size, device=DEVICE)
+        c = torch.zeros(num_samples, self.hidden_size, device=DEVICE)
 
         for i in range(timesteps):
             h, c = self.lstm_cell(x[:, i], (h, c))
