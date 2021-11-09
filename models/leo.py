@@ -101,6 +101,11 @@ class LEO(BaseMAML):
         self.decoder.to(DEVICE)
         self.f_theta.to(DEVICE)
 
+        print(self.encoder)
+        print(self.relation_net)
+        print(self.decoder)
+        print(self.f_theta)
+
         params = (
             list(self.encoder.parameters())
             + list(self.relation_net.parameters())

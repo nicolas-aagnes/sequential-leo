@@ -62,7 +62,9 @@ class BaseMAML:
 
         return outer_loss, predictions
 
-    def train(self, dataloader_train, dataloader_val, writer, yield_batch_output=False):
+    def train(
+        self, dataloader_train, dataloader_val, writer, args, yield_batch_output=False
+    ):
         """Train.
 
         Consumes dataloader_train to optimize meta-parameters
@@ -75,10 +77,9 @@ class BaseMAML:
             writer (SummaryWriter): TensorBoard logger
         """
         print(f"Starting training.")
-        num_train_tasks, num_val_tasks = 1000, 100
         tot_tasks = 0
 
-        for i_step, task_batch in enumerate(dataloader_train):
+        for task_batch in dataloader_train:
             tot_tasks += task_batch[0].shape[0]  # Add number of current batches.
 
             self.optimizer.zero_grad()
@@ -91,19 +92,17 @@ class BaseMAML:
 
             for val_task_batch in dataloader_val:
                 with torch.no_grad():
-                    val_outer_loss, val_predictions = self._outer_step(
-                        val_task_batch, train=False
-                    )
+                    val_outer_loss, _ = self._outer_step(val_task_batch, train=False)
                     val_losses.append(val_outer_loss.item())
 
                 val_tasks += val_task_batch[0].shape[0]
-                if val_tasks >= num_val_tasks:
+                if val_tasks >= args.num_val_tasks:
                     break
 
             val_loss = np.mean(val_losses)
 
             print(
-                f"[{tot_tasks:>4}/{num_train_tasks}]  Train: {outer_loss.item():.2f}  Val: {val_loss.item():.2f}"
+                f"[{tot_tasks:>4}/{args.num_train_tasks}]  Train: {outer_loss.item():.2f}  Val: {val_loss.item():.2f}"
             )
             writer.add_scalar("loss/train", outer_loss.item(), tot_tasks)
             writer.add_scalar("loss/val", val_loss, tot_tasks)
@@ -111,5 +110,5 @@ class BaseMAML:
             if yield_batch_output:
                 yield task_batch, predictions
 
-            if tot_tasks >= num_train_tasks:
+            if tot_tasks >= args.num_train_tasks:
                 break
