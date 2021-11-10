@@ -112,3 +112,19 @@ class BaseMAML:
 
             if tot_tasks >= args.num_train_tasks:
                 break
+
+    def eval(self, dataloader_val, num_val_tasks):
+        val_tasks = 0
+        val_losses = []
+
+        for val_task_batch in dataloader_val:
+            with torch.no_grad():
+                val_outer_loss, _ = self._outer_step(val_task_batch, train=False)
+                val_losses.append(val_outer_loss.item())
+
+            val_tasks += val_task_batch[0].shape[0]
+            if val_tasks >= num_val_tasks:
+                break
+
+        val_loss = np.mean(val_losses)
+        return val_loss
