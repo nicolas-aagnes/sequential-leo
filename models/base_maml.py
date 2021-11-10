@@ -91,9 +91,8 @@ class BaseMAML:
             val_losses = []
 
             for val_task_batch in dataloader_val:
-                with torch.no_grad():
-                    val_outer_loss, _ = self._outer_step(val_task_batch, train=False)
-                    val_losses.append(val_outer_loss.item())
+                val_outer_loss, _ = self._outer_step(val_task_batch, train=False)
+                val_losses.append(val_outer_loss.item())
 
                 val_tasks += val_task_batch[0].shape[0]
                 if val_tasks >= args.num_val_tasks:
@@ -118,9 +117,8 @@ class BaseMAML:
         val_losses = []
 
         for val_task_batch in dataloader_val:
-            with torch.no_grad():
-                val_outer_loss, _ = self._outer_step(val_task_batch, train=False)
-                val_losses.append(val_outer_loss.item())
+            val_outer_loss, _ = self._outer_step(val_task_batch, train=False)
+            val_losses.append(val_outer_loss.item())
 
             val_tasks += val_task_batch[0].shape[0]
             if val_tasks >= num_val_tasks:
