@@ -88,36 +88,34 @@ def generate_random_task(timesteps, timesteps_pred, num_support, num_query, anno
   ## Get Random Action
   random_action = np.random.randint(len(boundaries[:-1]))
 
-  ## Get Random Train Index
-  train_index = np.random.randint(boundaries[random_action], boundaries[random_action+1] - timesteps_total)
+  ## Get Random Index
+  index = np.random.randint(boundaries[random_action], boundaries[random_action+1] - timesteps_total)
 
-  ## Get Train Data
-  train_data = []
-  train_label = []
-  total_range = list(range(train_index, train_index+timesteps_total))
-  for item in np.arange(num_support):
-    _, _, pose3d = get_data(subject_id, train_index, annotations_path, timesteps=timesteps_total)
-    train_data.append(pose3d[:timesteps].reshape(timesteps, 51)) # 51 = 17 x 3
-    train_label.append(pose3d[timesteps:].reshape(timesteps_pred, 51))
-    train_index = np.random.randint(boundaries[random_action], boundaries[random_action+1] - timesteps_total)
-    total_range.extend(list(range(train_index, train_index+timesteps_total)))
+  ## Get Train and Query Data
+  data = []
+  label = []
+  total_range = list(range(index, index+timesteps_total))
+  for item in np.arange(num_support + num_query):
 
-  ## Get Non-Overlapping Random Query Index
-  query_data = []
-  query_label = []
-  query_index = np.random.randint(boundaries[random_action], boundaries[random_action+1] - timesteps_total)
-  for item in np.arange(num_query):
-    query_range = range(query_index, query_index + timesteps_total)
-    while check_range_overlap(total_range, query_range): ## Make sure to avoid overlapping with any of the train examples
-      query_index = np.random.randint(boundaries[random_action], boundaries[random_action+1])
+    ## Get Data
+    _, _, pose3d = get_data(subject_id, index, annotations_path, timesteps=timesteps_total)
+    data.append(pose3d[:timesteps].reshape(timesteps, 51)) # 51 = 17 x 3
+    label.append(pose3d[timesteps:].reshape(timesteps_pred, 51))
 
-    total_range.extend(list(range(query_index, query_index+timesteps_total)))
-    _, _, pose3d_query = get_data(subject_id, query_index, annotations_path, timesteps=timesteps_total)
-    query_data.append(pose3d_query[:timesteps].reshape(timesteps, 51)) # 51 = 17 x 3
-    query_label.append(pose3d_query[timesteps:].reshape(timesteps_pred, 51))
-    query_index = np.random.randint(boundaries[random_action], boundaries[random_action+1])
+    ## Calculate next index
+    index = np.random.randint(boundaries[random_action], boundaries[random_action+1] - timesteps_total)
+    index_range = range(index, index + timesteps_total)
+    while check_range_overlap(total_range, index_range): ## Make sure to avoid overlapping between examples
+      index = np.random.randint(boundaries[random_action], boundaries[random_action+1] - timesteps_total)
+    
+    total_range.extend(list(range(index, index+timesteps_total)))
+
 
   ## Return Batch
+  train_data = data[:num_support]
+  train_label = label[:num_support]
+  query_data = data[num_support:]
+  query_label = label[num_support:]
   return train_data, train_label, query_data, query_label
 
   
