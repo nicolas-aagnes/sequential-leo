@@ -1,7 +1,7 @@
 import torch
 import numpy as np
 
-from batch_data import generate_random_example
+from batch_data import generate_random_task
 
 
 class Human36M(torch.utils.data.Dataset):
@@ -31,23 +31,13 @@ class Human36M(torch.utils.data.Dataset):
             - y_query:   Tensor of shape (num_query,   num_timesteps_pred,    2)
             - subject_id, index: Tuple for plotting the ground truth human pose
         """
-        x_support = []
-        y_support = []
-        x_query = []
-        y_query = []
 
-        for _ in np.arange(self.num_support):
-          train_data, train_label, query_data, query_label = generate_random_example(self.num_timesteps, self.num_timesteps_pred, self.data_path)
-          x_support.append(train_data)
-          y_support.append(train_label)
-          x_query.append(query_data)
-          y_query.append(query_label)
+        train_data, train_label, query_data, query_label = generate_random_task(self.num_timesteps, self.num_timesteps_pred, self.num_support, self.num_query, self.data_path)
 
-        x_support = np.array(x_support)
-        y_support = np.array(y_support)
-        x_query = np.array(x_query)[:self.num_query]
-        y_query = np.array(y_query)[:self.num_query]
-
+        x_support = np.array(train_data)
+        y_support = np.array(train_label)
+        x_query = np.array(query_data)
+        y_query = np.array(query_label)
 
         return (
             x_support.astype(np.float32),
