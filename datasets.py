@@ -46,8 +46,8 @@ class Dataset2D(torch.utils.data.Dataset):
             - y_query:   Tensor of shape (num_query,   num_timesteps_pred,    2)
             - amplitude, phase: Tuple for plotting the ground truth sine curve
         """
-        amplitude = np.random.uniform(0.1, 5)
-        phase = np.random.uniform(0.3, np.pi)
+        amplitude = np.random.uniform(0.5, 5)
+        phase = np.random.uniform(0.5, np.pi)
 
         num_sequences = self.num_support + self.num_query
         num_timesteps = self.num_timesteps + self.num_timesteps_pred
