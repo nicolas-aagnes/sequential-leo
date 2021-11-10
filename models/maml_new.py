@@ -29,10 +29,6 @@ def functional_lstm_cell(x, h, c, parameters):
     x = x.unsqueeze(-1)
     h = h.unsqueeze(-1)
     c = c.unsqueeze(-1)
-    assert x.shape[1:] == (2, 1), x.shape
-    assert h.shape[1:] == (16, 1), h.shape
-    assert c.shape[1:] == (16, 1), c.shape
-    assert parameters["Whi"].shape == (16, 16), parameters["Whi"].shape
 
     input = torch.sigmoid(
         torch.bmm(parameters["Wii"].expand(num_samples, *parameters["Wii"].shape), x)
@@ -65,25 +61,28 @@ def functional_lstm_cell(x, h, c, parameters):
     return hidden_state.squeeze(-1), cell_state.squeeze(-1)
 
 
-def generate_lstm_cell_params():
+def generate_lstm_cell_params(input_size, hidden_size):
     parameters = {}
 
     for type1 in ("i", "h"):
         for type2 in ("i", "f", "g", "o"):
             parameters[f"W{type1}{type2}"] = torch.nn.init.xavier_uniform_(
                 torch.empty(
-                    16, 2 if type1 == "i" else 16, requires_grad=True, device=DEVICE
+                    hidden_size,
+                    input_size if type1 == "i" else hidden_size,
+                    requires_grad=True,
+                    device=DEVICE,
                 )
             )
 
     for type1 in ("i", "h"):
         for type2 in ("i", "f", "g", "o"):
             parameters[f"b{type1}{type2}"] = torch.nn.init.zeros_(
-                torch.empty(16, 1, requires_grad=True, device=DEVICE)
+                torch.empty(hidden_size, 1, requires_grad=True, device=DEVICE)
             )
 
     parameters["linear_output"] = torch.nn.init.xavier_uniform_(
-        torch.empty(2, 16, requires_grad=True, device=DEVICE)
+        torch.empty(input_size, hidden_size, requires_grad=True, device=DEVICE)
     )
 
     return parameters
@@ -98,7 +97,9 @@ class MAML(BaseMAML):
         super().__init__(num_inner_steps, inner_lr, learn_inner_lr, outer_lr, log_dir)
         self.config = config
 
-        self.meta_parameters = generate_lstm_cell_params()
+        self.meta_parameters = generate_lstm_cell_params(
+            self.config.input_size, self.config.hidden_size
+        )
 
         self.optimizer = torch.optim.Adam(
             params=list(self.meta_parameters.values()), lr=outer_lr
