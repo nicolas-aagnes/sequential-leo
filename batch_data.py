@@ -74,7 +74,7 @@ def get_data(subject_id, random_index, annotations_path, timesteps=1):
 def check_range_overlap(range1, range2):
   return len(set(range1).intersection(set(range2))) != 0 ## Make sure to avoid overlapping with any boundaries
 
-def generate_random_task(timesteps, timesteps_pred, num_support, num_query, annotations_path):
+def generate_random_task(timesteps, timesteps_pred, num_support, num_query, annotations_path, downsample=2):
 
   ## Get Random Subject 
   subject_id = np.random.randint(1, 8)
@@ -83,6 +83,9 @@ def generate_random_task(timesteps, timesteps_pred, num_support, num_query, anno
   length = get_subject_data_length(annotations_path, subject_id)
 
   boundaries = get_subject_action_boundaries(annotations_path, subject_id)
+  
+  timesteps *= downsample
+  timesteps_pred *= downsample
   timesteps_total = timesteps+timesteps_pred
 
   ## Get Random Action
@@ -110,6 +113,11 @@ def generate_random_task(timesteps, timesteps_pred, num_support, num_query, anno
     
     total_range.extend(list(range(index, index+timesteps_total)))
 
+  ## Get every Nth frame (batchsize, numframes, 51)
+  data = np.array(data)
+  label = np.array(label)
+  data = data[:,::downsample,:]
+  label = label[:,::downsample,:]
 
   ## Return Batch
   train_data = data[:num_support]
