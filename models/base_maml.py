@@ -63,7 +63,7 @@ class BaseMAML:
         return outer_loss, predictions
 
     def train(
-        self, dataloader_train, dataloader_val, writer, args, yield_batch_output=False
+        self, dataloader_train, dataloader_val, writer, args, yield_results=False
     ):
         """Train.
 
@@ -106,8 +106,8 @@ class BaseMAML:
             writer.add_scalar("loss/train", outer_loss.item(), tot_tasks)
             writer.add_scalar("loss/val", val_loss, tot_tasks)
 
-            if yield_batch_output:
-                yield task_batch, predictions
+            if yield_results:
+                yield {"train_loss": outer_loss.item(), "val_loss": val_loss}
 
             if tot_tasks >= args.num_train_tasks:
                 break

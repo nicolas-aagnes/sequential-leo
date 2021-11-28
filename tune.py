@@ -55,12 +55,16 @@ from ray.tune.schedulers import ASHAScheduler
 
 import numpy as np
 import torch
-from IPython import display
 
 import torch.utils.tensorboard as tensorboard
 import argparse
 from config import get_model_and_dataloaders
 from models.leo import LEO, LEOConfig
+
+import torch.utils.tensorboard as tensorboard
+import argparse
+from config import get_model_and_dataloaders
+from models.maml_new import MAML, MAMLConfig
 
 
 class Namespace:
@@ -214,114 +218,55 @@ class Namespace:
 
 
 def train_leo(config, args):
-    config = LEOConfig(
+    leo_config = LEOConfig(
         num_support=args.num_support,
         num_timesteps_pred=args.num_timesteps_pred,
         input_size=2,  # This is for sine 2D.
-        encoder_hidden_size=512,
-        relation_net_hidden_size=512,
+        encoder_hidden_size=128,
+        relation_net_hidden_size=128,
         z_dim=64,
-        decoder_hidden_size=512,
-        f_theta_hidden_size=512,
+        decoder_hidden_size=128,
+        f_theta_hidden_size=128,
+    )
+    model = LEO(
+        args.num_inner_steps,
+        args.inner_lr,
+        args.learn_inner_lr,
+        args.outer_lr,
+        args.log_dir,
+        leo_config,
+    )
+
+    writer = tensorboard.SummaryWriter(log_dir=args.log_dir)
+    _, dataloaders = get_model_and_dataloaders(args)
+    print("Starting training")
+    for i, results in enumerate(
+        model.train(dataloaders["train"], dataloaders["val"], writer, args, True)
+    ):
+        print(results)
+        tune.report(
+            train_loss=results["train_loss"], val_loss=results["val_loss"]
+        )
+
+def train_maml(config, args):
+    config = MAMLConfig(
+        input_size=2,
+        hidden_size=32,
+        num_timesteps_pred=args.num_timesteps_pred
     )
 
     writer = tensorboard.SummaryWriter(log_dir=args.log_dir)
     model, dataloaders = get_model_and_dataloaders(args)
-
+    print("Starting training")
     for i, results in enumerate(
         model.train(dataloaders["train"], dataloaders["val"], writer, args, True)
     ):
+        print(results)
         tune.report(
-            train_loss=results["train_results"], val_loss=results["val_results"]
+            train_loss=results["train_loss"], val_loss=results["val_loss"]
         )
 
 
-def train_cifar(config, checkpoint_dir=None, data_dir=None):
-    net = Net(config["l1"], config["l2"])
-
-    device = "cpu"
-    if torch.cuda.is_available():
-        device = "cuda:0"
-        if torch.cuda.device_count() > 1:
-            net = nn.DataParallel(net)
-    net.to(device)
-
-    criterion = nn.CrossEntropyLoss()
-    optimizer = optim.SGD(net.parameters(), lr=config["lr"], momentum=0.9)
-
-    if checkpoint_dir:
-        model_state, optimizer_state = torch.load(
-            os.path.join(checkpoint_dir, "checkpoint")
-        )
-        net.load_state_dict(model_state)
-        optimizer.load_state_dict(optimizer_state)
-
-    trainset, testset = load_data(data_dir)
-
-    test_abs = int(len(trainset) * 0.8)
-    train_subset, val_subset = random_split(
-        trainset, [test_abs, len(trainset) - test_abs]
-    )
-
-    trainloader = torch.utils.data.DataLoader(
-        train_subset, batch_size=int(config["batch_size"]), shuffle=True, num_workers=8
-    )
-    valloader = torch.utils.data.DataLoader(
-        val_subset, batch_size=int(config["batch_size"]), shuffle=True, num_workers=8
-    )
-
-    for epoch in range(10):  # loop over the dataset multiple times
-        running_loss = 0.0
-        epoch_steps = 0
-        for i, data in enumerate(trainloader, 0):
-            # get the inputs; data is a list of [inputs, labels]
-            inputs, labels = data
-            inputs, labels = inputs.to(device), labels.to(device)
-
-            # zero the parameter gradients
-            optimizer.zero_grad()
-
-            # forward + backward + optimize
-            outputs = net(inputs)
-            loss = criterion(outputs, labels)
-            loss.backward()
-            optimizer.step()
-
-            # print statistics
-            running_loss += loss.item()
-            epoch_steps += 1
-            if i % 2000 == 1999:  # print every 2000 mini-batches
-                print(
-                    "[%d, %5d] loss: %.3f"
-                    % (epoch + 1, i + 1, running_loss / epoch_steps)
-                )
-                running_loss = 0.0
-
-        # Validation loss
-        val_loss = 0.0
-        val_steps = 0
-        total = 0
-        correct = 0
-        for i, data in enumerate(valloader, 0):
-            with torch.no_grad():
-                inputs, labels = data
-                inputs, labels = inputs.to(device), labels.to(device)
-
-                outputs = net(inputs)
-                _, predicted = torch.max(outputs.data, 1)
-                total += labels.size(0)
-                correct += (predicted == labels).sum().item()
-
-                loss = criterion(outputs, labels)
-                val_loss += loss.cpu().numpy()
-                val_steps += 1
-
-        with tune.checkpoint_dir(epoch) as checkpoint_dir:
-            path = os.path.join(checkpoint_dir, "checkpoint")
-            torch.save((net.state_dict(), optimizer.state_dict()), path)
-
-        tune.report(loss=(val_loss / val_steps), accuracy=correct / total)
-    print("Finished Training")
 
 
 ######################################################################
@@ -438,6 +383,26 @@ def main(num_samples=10, max_num_epochs=10, gpus_per_trial=1):
         noise=0.0,
         delta=0.3,
     )
+    # args = Namespace(
+    #     model="maml",
+    #     dataset="sine2D",
+    #     num_support=1,
+    #     num_query=15,
+    #     num_timesteps=10,
+    #     num_timesteps_pred=4,
+    #     num_inner_steps=1,
+    #     inner_lr=0.4,
+    #     learn_inner_lr=False,
+    #     outer_lr=0.001,
+    #     batch_size=64,
+    #     num_train_tasks=10000,
+    #     num_val_tasks=64,
+    #     test=False,
+    #     log_dir=None,
+    #     checkpoint_step=-1,
+    #     noise=0.0,
+    #     delta=0.3,
+    # )
     config = {
         "l1": tune.sample_from(lambda _: 2 ** np.random.randint(2, 9)),
         "l2": tune.sample_from(lambda _: 2 ** np.random.randint(2, 9)),
@@ -457,7 +422,7 @@ def main(num_samples=10, max_num_epochs=10, gpus_per_trial=1):
     )
     result = tune.run(
         partial(train_leo, args=args),
-        resources_per_trial={"cpu": 12, "gpu": gpus_per_trial},
+        resources_per_trial={"cpu": 72, "gpu": gpus_per_trial},
         config=config,
         num_samples=num_samples,
         scheduler=scheduler,
@@ -492,7 +457,7 @@ def main(num_samples=10, max_num_epochs=10, gpus_per_trial=1):
 
 if __name__ == "__main__":
     # You can change the number of GPUs per trial here:
-    main(num_samples=1, max_num_epochs=10, gpus_per_trial=0)
+    main(num_samples=2, max_num_epochs=10, gpus_per_trial=1)
 
 
 ######################################################################

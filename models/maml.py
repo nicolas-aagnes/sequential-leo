@@ -149,15 +149,6 @@ class MAML:
         """
         accuracies = []
         parameters = {k: torch.clone(v) for k, v in self._meta_parameters.items()}
-        # ********************************************************
-        # ******************* YOUR CODE HERE *********************
-        # ********************************************************
-        # TODO: finish implementing this method.
-        # This method computes the inner loop (adaptation) procedure for one
-        # task. It also scores the model along the way.
-        # Make sure to populate accuracies and update parameters.
-        # Use F.cross_entropy to compute classification losses.
-        # Use util.score to compute accuracies.
 
         for _ in range(self._num_inner_steps):
             logits = self._forward(images, parameters)
@@ -179,9 +170,6 @@ class MAML:
             logits = self._forward(images, parameters)
             accuracies.append(util.score(logits, labels))
 
-        # ********************************************************
-        # ******************* YOUR CODE HERE *********************
-        # ********************************************************
         return parameters, accuracies
 
     def _outer_step(self, task_batch, train):  # pylint: disable=unused-argument
@@ -208,16 +196,6 @@ class MAML:
             labels_support = labels_support.to(DEVICE)
             images_query = images_query.to(DEVICE)
             labels_query = labels_query.to(DEVICE)
-            # ********************************************************
-            # ******************* YOUR CODE HERE *********************
-            # ********************************************************
-            # TODO: finish implementing this method.
-            # For a given task, use the _inner_loop method to adapt, then
-            # compute the MAML loss and other metrics.
-            # Use F.cross_entropy to compute classification losses.
-            # Use util.score to compute accuracies.
-            # Make sure to populate outer_loss_batch, accuracies_support_batch,
-            # and accuracy_query_batch.
 
             parameters, accuracies = self._inner_loop(
                 images_support, labels_support, train
@@ -230,9 +208,6 @@ class MAML:
             outer_loss_batch.append(outer_loss)
             accuracy_query_batch.append(util.score(logits_query, labels_query))
 
-            # ********************************************************
-            # ******************* YOUR CODE HERE *********************
-            # ********************************************************
         outer_loss = torch.mean(torch.stack(outer_loss_batch))
         accuracies_support = np.mean(accuracies_support_batch, axis=0)
         accuracy_query = np.mean(accuracy_query_batch)
