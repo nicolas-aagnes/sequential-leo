@@ -5,6 +5,7 @@ import torch.nn.functional as F
 from models.base_maml import BaseMAML
 from models.mlp import MLP
 from dataclasses import dataclass
+from procrustes import compute_similarity_transform
 
 torch.autograd.set_detect_anomaly(True)
 
@@ -122,9 +123,13 @@ class LEO(BaseMAML):
         self.optimizer = torch.optim.Adam(params=params, lr=outer_lr)
 
     def _inner_loss(self, predictions, target):
+        d, Z, T, b, c = compute_similarity_transform(targets, predictions)
+        predictions = torch.tensor(Z)
         return F.mse_loss(predictions, target)
 
     def _outer_loss(self, predictions, target, parameters):
+        d, Z, T, b, c = compute_similarity_transform(targets, predictions)
+        predictions = torch.tensor(Z)
         return F.mse_loss(predictions, target)
 
     # def _outer_loss(self, predictions, target, parameters):
